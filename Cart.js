@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import React, { Component } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   StyleSheet,
   Text,
@@ -16,32 +16,28 @@ import {
 import CartData from "./CartData";
 
 // export default function App() {
-class Cart extends Component {
-  constructor(props) {
-    super(props);
-    // Navigation.events().bindComponent(this);
-  }
-
-  state = {
-    password: "",
-    username: "",
-    CartModal: this.props.OpenCart,
-    CartCount: 0,
-  };
+function Cart(props) {
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [UserID, setUserID] = useState(props.UserID);
+  const [CartModal, setCartModal] = useState(props.OpenCart);
+  const [CartCount, setCartCount] = useState(0);
+  const [CartSelected, setCartSelected] = useState([]);
+  const [CartList, setCartList] = useState([]);
 
   backButton = () => {
-    this.props.onBack();
+    props.onBack();
   };
 
-  componentDidMount() {
-    this.fetchCart();
+  useEffect(() => {
+    fetchCart();
     console.log("hello");
-  }
+  }, []);
 
   fetchCart = () => {
     console.log(
       JSON.stringify({
-        UserID: this.props.UserID,
+        UserID: UserID,
       })
     );
     // return;
@@ -52,20 +48,23 @@ class Cart extends Component {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        UserID: this.props.UserID,
+        UserID: UserID,
       }),
     })
       .then((response) => response.json())
       .then((responseJson) => {
         console.log(responseJson);
         if (responseJson.status == true) {
-          this.setState({
-            CartList: responseJson.CartData,
-            CartCount: responseJson.CartCount,
-            CartModal: true,
-          });
+          setCartModal(true);
+          setCartList(responseJson.CartData);
+          setCartCount(responseJson.CartCount);
+          setCartModal(true);
+          setCartSelected([]);
         } else {
-          Alert.alert(null, responseJson.ErrorMessage);
+          setCartList([]);
+          setCartCount(0);
+          setCartSelected([]);
+
           return;
         }
       })
@@ -79,7 +78,19 @@ class Cart extends Component {
     select.map((val) => {
       if (val.isSelected == true) {
         selectedcart.push(val.CartID);
-        this.setState({ selectedcart });
+      }
+    });
+
+    return selectedcart;
+  };
+
+  selected = (select) => {
+    var selectedcart = [];
+    select.map((val) => {
+      if (val.isSelected == true) {
+        selectedcart.push({
+          CartID: val.CartID,
+        });
       }
     });
 
@@ -89,9 +100,11 @@ class Cart extends Component {
   buyCart = () => {
     console.log(
       JSON.stringify({
-        CartIDs: this.getCartID(this.state.CartList),
+        CartIDs: getCartID(CartList),
+        UserID: UserID,
       })
     );
+
     return fetch("http://192.168.1.28/flowerstore/buyCart.php", {
       method: "POST",
       headers: {
@@ -99,27 +112,31 @@ class Cart extends Component {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        CartIDs: this.getCartID(this.state.CartList),
+        CartIDs: getCartID(CartList),
+        UserID: UserID,
       }),
     })
       .then((response) => response.json())
       .then((responseJson) => {
         console.log(responseJson);
         if (responseJson.status == true) {
-          // this.setState({
-          //   CartModal: true,
-          // });
+          setCartSelected([]);
+          fetchCart();
+
           Alert.alert("Bought Successfully!", "Thank You for Buying!", [
             {
               text: "Ok",
               onPress: () => {
-                this.backButton();
+                fetchCart();
               },
             },
           ]);
         } else {
-          Alert.alert(null, responseJson.ErrorMessage);
-          return;
+          Alert.alert("Error!", "No Item Selected!", [
+            {
+              text: "Ok",
+            },
+          ]);
         }
       })
       .catch((error) => {
@@ -127,106 +144,102 @@ class Cart extends Component {
       });
   };
 
-  render() {
-    return (
-      <SafeAreaView>
+  return (
+    <SafeAreaView>
+      <View
+        style={{
+          width: "100%",
+          height: 50,
+          backgroundColor: "#f79f8e",
+          flexDirection: "row",
+        }}
+      >
         <View
           style={{
-            width: "100%",
+            width: "10%",
+            justifyContent: "center",
+            alignItems: "center",
             height: 50,
-            backgroundColor: "#f79f8e",
-            flexDirection: "row",
           }}
         >
-          <View
-            style={{
-              width: "10%",
-              justifyContent: "center",
-              alignItems: "center",
-              height: 50,
-            }}
-          >
-            <TouchableOpacity onPress={() => this.backButton()}>
-              {/* <Icon size={25} name={"exit-outline"} color="#FFFFFF" /> */}
-              <Text
-                style={{
-                  color: "#2f2d6f",
-                  fontWeight: "bold",
-                  fontSize: 30,
-                }}
-              >
-                {" <<"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View
-            style={{
-              width: "80%",
-              justifyContent: "center",
-            }}
-          >
+          <TouchableOpacity onPress={() => backButton()}>
+            {/* <Icon size={25} name={"exit-outline"} color="#FFFFFF" /> */}
             <Text
               style={{
                 color: "#2f2d6f",
                 fontWeight: "bold",
-                fontSize: 25,
-                paddingLeft: 110,
+                fontSize: 30,
               }}
             >
-              MY CART
+              {" <<"}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
-
-        <View style={{ alignItems: "center" }}>
+        <View
+          style={{
+            width: "80%",
+            justifyContent: "center",
+          }}
+        >
           <Text
             style={{
               color: "#2f2d6f",
               fontWeight: "bold",
-              fontSize: 20,
-              paddingVertical: 20,
+              fontSize: 25,
+              paddingLeft: 110,
             }}
           >
-            Items on the Cart: {this.state.CartCount}
+            MY CART
           </Text>
         </View>
-        <Button
-          color="#2f2d6f"
-          title="Buy"
-          // onPress={() => console.log(this.state.CartSelected)}
-          onPress={() => this.buyCart()}
-          // disabled={!authenticated}
-        />
-        <FlatList
-          keyboardShouldPersistTaps={true}
-          data={this.state.CartList}
+      </View>
+
+      <View style={{ alignItems: "center" }}>
+        <Text
           style={{
-            backgroundColor: "#f79f8e",
-            paddingTop: 10,
-            height: "100%",
-            width: "100%",
+            color: "#2f2d6f",
+            fontWeight: "bold",
+            fontSize: 20,
+            paddingVertical: 20,
           }}
-          renderItem={({ item, index }) => (
-            <CartData
-              ProdName={item.ProductName}
-              Price={item.Price}
-              Stocks={item.Stocks}
-              Photo={item.Photo}
-              isSelected={item.isSelected}
-              onPress={() => {
-                var CartList = this.state.CartList;
-                CartList[index].isSelected = !CartList[index].isSelected;
-                this.setState({
-                  CartSelected: CartList,
-                });
-              }}
-            />
-          )}
-          keyExtractor={({ id }, index) => id}
-        />
-      </SafeAreaView>
-    );
-  }
+        >
+          Items on the Cart: {CartCount}
+        </Text>
+      </View>
+      <Button
+        color="#2f2d6f"
+        title="Buy"
+        // onPress={() => console.log(this.state.CartSelected)}
+        onPress={() => buyCart()}
+        // disabled={}
+      />
+      <FlatList
+        keyboardShouldPersistTaps={true}
+        data={CartList}
+        style={{
+          backgroundColor: "#f79f8e",
+          paddingTop: 10,
+          height: "100%",
+          width: "100%",
+        }}
+        renderItem={({ item, index }) => (
+          <CartData
+            ProdName={item.ProductName}
+            Price={item.Price}
+            Stocks={item.Stocks}
+            Photo={item.Photo}
+            isSelected={item.isSelected}
+            onPress={() => {
+              var CartLists = CartList;
+              CartLists[index].isSelected = !CartLists[index].isSelected;
+              setCartSelected(selected(CartLists));
+            }}
+          />
+        )}
+        keyExtractor={({ id }, index) => id}
+      />
+    </SafeAreaView>
+  );
 }
 
 export default Cart;
